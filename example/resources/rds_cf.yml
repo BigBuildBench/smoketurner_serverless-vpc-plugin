@@ -1,0 +1,79 @@
+---
+Resources:
+  DBClusterParameterGroup:
+    Type: "AWS::RDS::DBClusterParameterGroup"
+    Properties:
+      Description: "Aurora PostgreSQL 11 Parameter Group"
+      Family: aurora-postgresql11
+      Parameters:
+        rds.force_ssl: 1
+
+  AppSecurityGroupEgressRDS:
+    Type: "AWS::EC2::SecurityGroupEgress"
+    Properties:
+      Description: "permit PostgreSQL (5432) to DBSecurityGroup"
+      DestinationSecurityGroupId: !Ref DBSecurityGroup
+      FromPort: 5432
+      GroupId: !GetAtt AppSecurityGroup.GroupId
+      IpProtocol: tcp
+      ToPort: 5432
+
+  DBSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "RDS Security Group"
+      SecurityGroupEgress:
+        - Description: "deny all outbound"
+          IpProtocol: "-1"
+          CidrIp: "127.0.0.1/32"
+      SecurityGroupIngress:
+        - Description: "permit PostgreSQL (5432) from AppSecurityGroup"
+          FromPort: 5432
+          IpProtocol: tcp
+          SourceSecurityGroupId: !GetAtt AppSecurityGroup.GroupId
+          ToPort: 5432
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref "AWS::StackName", rds]]
+      VpcId: !Ref VPC
+
+  DBCluster:
+    Type: "AWS::RDS::DBCluster"
+    DeletionPolicy: Snapshot
+    UpdateReplacePolicy: Snapshot
+    Properties:
+      DatabaseName: ${self:custom.databaseName}
+      DBClusterIdentifier: "${self:service}-${self:provider.stage}"
+      DBClusterParameterGroupName: !Ref DBClusterParameterGroup
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      EnableHttpEndpoint: true
+      Engine: aurora-postgresql
+      EngineMode: serverless
+      EngineVersion: "11.16" # Data API only supports PostgreSQL 11.16 https://docs.aws.amazon.com/AmazonRDS/latest/AuroraUserGuide/Concepts.Aurora_Fea_Regions_DB-eng.Feature.Data_API.html#Concepts.Aurora_Fea_Regions_DB-eng.Feature.Data_API.apg
+      ManageMasterUserPassword: true
+      MasterUsername: postgres
+      ScalingConfiguration:
+        AutoPause: true
+        MaxCapacity: 2
+        MinCapacity: 2
+        SecondsUntilAutoPause: 300 # 5 minutes
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: !Join ["-", [!Ref "AWS::StackName", rds]]
+      UseLatestRestorableTime: true
+      VpcSecurityGroupIds:
+        - !Ref DBSecurityGroup
+
+Outputs:
+  DBClusterAddress:
+    Description: RDS Cluster Address
+    Value: !GetAtt DBCluster.Endpoint.Address
+
+  DBClusterPort:
+    Description: RDS Cluster Port
+    Value: !GetAtt DBCluster.Endpoint.Port
+
+  SecretArn:
+    Description: Secret ARN
+    Value: !GetAtt DBCluster.MasterUserSecret.SecretArn

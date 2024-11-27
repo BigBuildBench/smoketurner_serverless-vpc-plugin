@@ -1,0 +1,26 @@
+{
+  "name": "sls-vpc-example",
+  "private": true,
+  "description": "Example project for serverless-vpc-plugin",
+  "author": "Smoke Turner, LLC <github@smoketurner.com>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/smoketurner/serverless-vpc-plugin"
+  },
+  "main": "index.js",
+  "scripts": {
+    "package": "SLS_DEBUG=* sls package",
+    "deploy": "sls deploy -v --force",
+    "remove": "sls remove -v",
+    "test": "sls invoke -f example"
+  },
+  "devDependencies": {
+    "aws-sdk": "2.1520.0",
+    "serverless": "3.38.0",
+    "serverless-vpc-plugin": "smoketurner/serverless-vpc-plugin#master",
+    "serverless-webpack": "5.13.0",
+    "webpack": "5.89.0",
+    "webpack-node-externals": "3.0.0"
+  }
+}
